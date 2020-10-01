@@ -172,5 +172,113 @@ class PostTest extends TestCase
         $response->assertStatus(200);
     }
 
+    /**
+     * See if we get session errors with title missing
+     *
+     * @return void
+     */
+    public function testPostRequiresATitle()
+    {
+        $post = Post::factory()->make(
+            [
+                'user_id' => $this->user->id,
+                'title'   => null
+            ]
+        );
     
+        $response = $this->actingAs($this->user)->post('/posts', $post->toArray())
+            ->assertSessionHasErrors('title');
+    }
+    
+    /**
+     * Check post cant be updated by logged in user
+     *
+     * @return void
+     */
+    public function testPostRequiresABody()
+    {
+        $post = Post::factory()->make(
+            [
+                'user_id' => $this->user->id,
+                'body'   => null
+            ]
+        );
+    
+        $response = $this->actingAs($this->user)->post('/posts', $post->toArray())
+            ->assertSessionHasErrors('body');
+    }
+
+    /**
+     * Check post cant be updated by not logged in user
+     *
+     * @return void
+     */
+    public function testPostCantBeEditedByNotLoggedInUser()
+    {
+        $post = Post::factory()->create(
+            [
+                'user_id' => $this->user->id
+            ]
+        );
+        $post->title = "Updated Title";
+
+        $response = $this->put('/posts/'.$post->id, $post->toArray());
+        
+        $response->assertStatus(302);
+    }
+
+    /**
+     * See if we get session errors with title missing
+     *
+     * @return void
+     */
+    public function testPostCanOnlyBeEditedByLoggedInUser()
+    {
+        $post = Post::factory()->create(
+            [
+                'user_id' => $this->user->id
+            ]
+        );
+        $post->title = "Updated Title";
+
+        $response = $this->actingAs($this->user)->put('/posts/'.$post->id, $post->toArray());
+        
+        $this->assertDatabaseHas('posts', ['id'=> $post->id , 'title' => 'Updated Title']);
+    }
+
+    /**
+     * See if we get session errors with title deleted
+     *
+     * @return void
+     */
+    public function testPostCanNotBeDeleteddByNotLoggedInUser()
+    {
+        $post = Post::factory()->create(
+            [
+                'user_id' => $this->user->id
+            ]
+        );
+
+        $response = $this->delete('/posts/'.$post->id);
+        $response->assertStatus(302);
+    }
+
+    /**
+     * See if we get session errors with title missing
+     *
+     * @return void
+     */
+    public function testPostCanBeDeletedByLoggedInUser()
+    {
+        $post = Post::factory()->create(
+            [
+                'user_id' => $this->user->id
+            ]
+        );
+        $this->assertDatabaseHas('posts', ['id'=> $post->id]);
+        
+        $response = $this->actingAs($this->user)->delete('/posts/' . $post->id);
+
+        $this->assertDatabaseMissing('posts', ['id'=> $post->id]);
+    }
 }
